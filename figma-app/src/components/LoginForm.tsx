@@ -1,14 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { SocialButton } from './SocialButton';
+import { useLoginMutation } from '../store';
 
 export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [login, { isLoading, data: loginResponse, error: loginError }] = useLoginMutation();
 
-  const handleSignIn = () => {
-    console.log('Sign in:', { email, password });
+  useEffect(() => {
+    if (loginError) {
+      const errorMessage = loginError && typeof loginError === 'object' && 'data' in loginError 
+        ? (loginError.data as any)?.message || 'Login failed'
+        : 'An error occurred';
+      setError(errorMessage);
+    }
+  }, [loginError]);
+
+  useEffect(() => {
+    if (loginResponse?.success) {
+      console.log('Login successful:', loginResponse);
+      setError('');
+      // You can navigate to dashboard here or show success message
+    }
+  }, [loginResponse]);
+
+  const handleSignIn = async () => {
+    setError('');
+    try {
+      await login({ email, password }).unwrap();
+    } catch (err) {
+      console.error('Login error:', err);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -28,6 +53,12 @@ export const LoginForm: React.FC = () => {
         Sign in to your SaaSly account
       </p>
 
+      {error && (
+        <div className="absolute left-[180px] top-[260px] w-[400px] bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+          {error}
+        </div>
+      )}
+
       <Input
         className="absolute left-[180px] top-[290px]"
         label="Email address"
@@ -35,6 +66,7 @@ export const LoginForm: React.FC = () => {
         placeholder="you@company.com"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
+        disabled={isLoading}
       />
 
       <Input
@@ -44,14 +76,16 @@ export const LoginForm: React.FC = () => {
         placeholder="••••••••••••"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
+        disabled={isLoading}
       />
 
       <Button
         type="submit"
         onClick={handleSignIn}
         className="absolute left-[180px] top-[510px]"
+        disabled={isLoading}
       >
-        Sign in
+        {isLoading ? 'Signing in...' : 'Sign in'}
       </Button>
 
       <p className="absolute left-[240px] top-[564px] h-[15px] w-[179px] text-[12px] font-normal leading-[15px] text-[#6B7280]">
